@@ -1,21 +1,21 @@
 import generateMidiFromProgression from "./midiWriter.js";
 
 const scalePoints = {
-    "major": {"sad-cheerful": -4, "mysterious-mundane": 0, "tense-calm": -2},
-    "natural minor": {"sad-cheerful": 3, "mysterious-mundane": 2, "tense-calm": 3},
-    "harmonic minor": {"sad-cheerful": 4, "mysterious-mundane": 3, "tense-calm": 3},
-    "melodic minor": {"sad-cheerful": 4, "mysterious-mundane": 4, "tense-calm": 3},
-    "dorian": {"sad-cheerful": 2, "mysterious-mundane": 5, "tense-calm": -3},
-    "phrygian": {"sad-cheerful": 4, "mysterious-mundane": 3, "tense-calm": 4},
-    "lydian": {"sad-cheerful": -5, "mysterious-mundane": 1, "tense-calm": -2},
-    "mixolydian": {"sad-cheerful": -3, "mysterious-mundane": 1, "tense-calm": 0},
-    "locrian": {"sad-cheerful": 5, "mysterious-mundane": 4, "tense-calm": 5}
+    "major": { "sad-cheerful": -4, "mysterious-mundane": 0, "tense-calm": -2 },
+    "natural minor": { "sad-cheerful": 3, "mysterious-mundane": 2, "tense-calm": 3 },
+    "harmonic minor": { "sad-cheerful": 4, "mysterious-mundane": 3, "tense-calm": 3 },
+    "melodic minor": { "sad-cheerful": 4, "mysterious-mundane": 4, "tense-calm": 3 },
+    "dorian": { "sad-cheerful": 2, "mysterious-mundane": 5, "tense-calm": -3 },
+    "phrygian": { "sad-cheerful": 4, "mysterious-mundane": 3, "tense-calm": 4 },
+    "lydian": { "sad-cheerful": -5, "mysterious-mundane": 1, "tense-calm": -2 },
+    "mixolydian": { "sad-cheerful": -3, "mysterious-mundane": 1, "tense-calm": 0 },
+    "locrian": { "sad-cheerful": 5, "mysterious-mundane": 4, "tense-calm": 5 }
 };
 
 const chordPoints = {
-    "minor": {"sad-cheerful": 5, "mysterious-mundane": 0, "tense-calm": 3},
-    "major": {"sad-cheerful": -5, "mysterious-mundane": 0, "tense-calm": -3},
-    "diminished": {"sad-cheerful": -5, "mysterious-mundane": 2, "tense-calm": 5}
+    "minor": { "sad-cheerful": 5, "mysterious-mundane": 0, "tense-calm": 3 },
+    "major": { "sad-cheerful": -5, "mysterious-mundane": 0, "tense-calm": -3 },
+    "diminished": { "sad-cheerful": -5, "mysterious-mundane": 2, "tense-calm": 5 }
 };
 
 const scaleChords = {
@@ -35,14 +35,14 @@ const scaleChords = {
     A random 
 */
 
-const randNum = (from, to) => Math.floor(Math.random()* ((to - from)+1)) + from;
+const randNum = (from, to) => Math.floor(Math.random() * ((to - from) + 1)) + from;
 
 function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpleComplex) {
     // Segédfüggvény: eltérés kiszámítása két pontkészlet között
     function calculateDeviation(target, source) {
         return Math.abs(target["sad-cheerful"] - source["sad-cheerful"]) +
-               Math.abs(target["mysterious-mundane"] - source["mysterious-mundane"]) +
-               Math.abs(target["tense-calm"] - source["tense-calm"]);
+            Math.abs(target["mysterious-mundane"] - source["mysterious-mundane"]) +
+            Math.abs(target["tense-calm"] - source["tense-calm"]);
     }
 
     // Segédfüggvény: akkord lekérdezése fok szerint
@@ -108,60 +108,80 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
     progression[0] = [getChordByDegree(1)];
     let skipTurns = [];
 
-    switch(patternChoice) {
+    switch (patternChoice) {
         case 0:
             //minden ütemben egy akkord
             progression[5] = [getChordByDegree(1)];
             progression[7] = [getChordByDegree(1)];
-            skipTurns = [0,5,7];
+            skipTurns = [0, 5, 7];
             break;
         case 1:
             //2,1,2,1 akkordok
-            progression[0].push(getChordByDegree(randNum(2,7)));
+            progression[0].push(getChordByDegree(randNum(2, 7)));
             progression[1] = [getChordByDegree(1)];
             progression[5] = [getChordByDegree(1)];
             progression[7] = [getChordByDegree(1)];
-            skipTurns = [0,1,5,7];
+            skipTurns = [0, 1, 5, 7];
             break;
         case 2:
             //1,2,1,2 akkordok
             progression[2] = [getChordByDegree(1)];
-            skipTurns = [0,2];
+            skipTurns = [0, 2];
             break;
     }
 
     let previousChordDegree = 0;
+    let diminishedCooldown = 0; // nulla, azaz kezdéskor nincs tiltás
 
-    for(let i = 0; i < 8; i++) {
-        if(skipTurns.includes(i)) continue;
+    for (let i = 0; i < 8; i++) {
+        // Minden ütemnél csökkentjük a diminishedCooldown-ot, akár skipelt, akár nem
+        if (diminishedCooldown > 0) diminishedCooldown--;
+
+        if (skipTurns.includes(i)) continue;
 
         const measure = [];
-        let chordDegree = randNum(2,7);
-        
-        while(chordDegree === previousChordDegree) {
-            chordDegree = randNum(2,7);
+        let chordDegree = randNum(2, 7);
+        let chord = getChordByDegree(chordDegree);
+
+        // Ellenőrizzük a diminished tiltást
+        while ((chord.type === "diminished" && diminishedCooldown > 0) || chordDegree === previousChordDegree) {
+            chordDegree = randNum(2, 7);
+            chord = getChordByDegree(chordDegree);
         }
 
-        measure.push(getChordByDegree(chordDegree));
+        previousChordDegree = chordDegree;
 
-        if([1,2].includes(patternChoice)) {
-            chordDegree = randNum(2,7);
+        measure.push(chord);
 
-            while(chordDegree === previousChordDegree) {
-                chordDegree = randNum(2,7);
+        // Ha diminished-et generáltunk, beállítjuk a cooldown-t
+        if (chord.type === "diminished") diminishedCooldown = 3;
+
+        // Pattern-specifikus második akkord (ha van)
+        if ((i + 1) % 2 === 1 && patternChoice === 1) {
+            chordDegree = randNum(2, 7);
+            chord = getChordByDegree(chordDegree);
+
+            while ((chord.type === "diminished" && diminishedCooldown > 0) || chordDegree === previousChordDegree) {
+                chordDegree = randNum(2, 7);
+                chord = getChordByDegree(chordDegree);
             }
 
-            previousChordDegree = chordDegree;
-        }
+            measure.push(chord);
+            if (chord.type === "diminished") diminishedCooldown = 3;
+        } else if (patternChoice === 2 && (i + 1) % 2 === 0) {
+            chordDegree = randNum(2, 7);
+            chord = getChordByDegree(chordDegree);
 
-        if((i+1)%2 === 1 && patternChoice === 1) {
-            measure.push(getChordByDegree(chordDegree));
-        } else if(patternChoice === 2 && (i+1)%2 === 0) {
-            measure.push(getChordByDegree(chordDegree));
+            while ((chord.type === "diminished" && diminishedCooldown > 0) || chordDegree === previousChordDegree) {
+                chordDegree = randNum(2, 7);
+                chord = getChordByDegree(chordDegree);
+            }
+
+            measure.push(chord);
+            if (chord.type === "diminished") diminishedCooldown = 3;
         }
 
         progression[i] = measure;
-
         previousChordDegree = chordDegree;
     }
 
@@ -499,10 +519,10 @@ function getChromaticMediants(diatonicChords, scaleType = "major", chordType = "
     return result;
 }
 
-const progression = createChordProgression(2, 5, -3, 1);
+const progression = createChordProgression(-5, 0, -3, 1);
 console.log(progression.scale);
 
-for(let chord of progression.progression) {
+for (let chord of progression.progression) {
     console.log(chord);
 }
 
