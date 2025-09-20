@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "midi-writer-js": "^3.1.1"
+  },
+  "name": "chord-progression-generator",
+  "version": "1.0.0",
+  "main": "midiWriter.js",
+  "devDependencies": {},
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
