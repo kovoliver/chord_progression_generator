@@ -46,20 +46,23 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
     }
 
     // Segédfüggvény: akkord lekérdezése fok szerint
-    function getChordByDegree(degree) {
+    function getChordByDegree(degree, chords) {
         const type = chordTypes[degree - 1];
-        return { index: degree, notes: diatonicChords[degree - 1], type: type };
+        return { degree: degree, notes: chords[degree - 1], type: type };
     }
 
-    function pickaChord(prevDegree) {
+    function pickaChord(prevDegree, chords) {
         let chordDegree = randNum(2, 7);
-        let chord = getChordByDegree(chordDegree);
+        let chord = getChordByDegree(chordDegree, chords);
 
         while ((chord.type === "diminished"
-            && (diminishedCooldown > 0 || Math.abs(prevDegree - chordDegree) > 2))
-            || chordDegree === prevDegree) {
+            && (diminishedCooldown > 0 
+            || Math.abs(prevDegree - chordDegree) > 2))
+            || chordDegree === prevDegree
+            || selectedScale === "melodic minor" 
+            && prevDegree === 2 && chordDegree === 4) {
             chordDegree = randNum(2, 7);
-            chord = getChordByDegree(chordDegree);
+            chord = getChordByDegree(chordDegree, chords);
         }
 
         return chord;
@@ -75,24 +78,33 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
         scaleProbabilities[scale] = probability;
     }
 
-    // A három legnagyobb valószínűségű skála kiválasztása
+    // A kettő legnagyobb valószínűségű skála kiválasztása
     const sortedScales = Object.entries(scaleProbabilities)
         .sort(([, probA], [, probB]) => probB - probA)
-        .slice(0, 3);
+        .slice(0, 2);
 
     // Véletlenszerű választás a top 3 skála közül
-    const selectedScale = sortedScales[Math.floor(Math.random() * 3)][0];
+    const selectedScale = sortedScales[Math.floor(Math.random() * 2)][0];
 
     // 2. Diatonikus akkordok meghatározása (triádok, C kulcsban)
-    const diatonicChords = getDiatonicChords("C", selectedScale, "triad");
+    const diatonicTriads = getDiatonicChords("C", selectedScale, "triad");
+    const diatonicSevenths = getDiatonicChords("C", selectedScale, "seventh");
+    const diatonicNinths = getDiatonicChords("C", selectedScale, "ninth");
+
+    const allChords = [
+        diatonicTriads,
+        diatonicSevenths,
+        diatonicNinths
+    ];
+
     const chordTypes = scaleChords[selectedScale];
 
     // 3. Akkordok csoportosítása típus szerint
     const chordsByType = { major: [], minor: [], diminished: [] };
 
-    for (let i = 0; i < diatonicChords.length; i++) {
+    for (let i = 0; i < diatonicTriads.length; i++) {
         const type = chordTypes[i];
-        chordsByType[type].push({ index: i + 1, notes: diatonicChords[i] });
+        chordsByType[type].push({ degree: i + 1, notes: diatonicTriads[i] });
     }
 
     // 4. Akkordtípus valószínűségek kiszámítása
@@ -118,27 +130,32 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
 
     // 6. Akkordprogresszió generálása (8 ütem)
     const progression = [];
-    progression[0] = [getChordByDegree(1)];
+    const chords = allChords[simpleComplex];
+    progression[0] = [getChordByDegree(1, chords)];
     let skipTurns = [];
+
+    /*
+        triad-eknél 
+    */
 
     switch (patternChoice) {
         case 0:
             //minden ütemben egy akkord
-            progression[5] = [getChordByDegree(1)];
-            progression[7] = [getChordByDegree(1)];
+            progression[5] = [getChordByDegree(1, chords)];
+            progression[7] = [getChordByDegree(1, chords)];
             skipTurns = [0, 5, 7];
             break;
         case 1:
             //2,1,2,1 akkordok
-            progression[0].push(getChordByDegree(randNum(2, 7)));
-            progression[1] = [getChordByDegree(1)];
-            progression[5] = [getChordByDegree(1)];
-            progression[7] = [getChordByDegree(1)];
+            progression[0].push(getChordByDegree(randNum(2, 7), chords));
+            progression[1] = [getChordByDegree(1, chords)];
+            progression[5] = [getChordByDegree(1, chords)];
+            progression[7] = [getChordByDegree(1, chords)];
             skipTurns = [0, 1, 5, 7];
             break;
         case 2:
             //1,2,1,2 akkordok
-            progression[2] = [getChordByDegree(1)];
+            progression[2] = [getChordByDegree(1, chords)];
             skipTurns = [0, 2];
             break;
     }
@@ -149,11 +166,16 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
     for (let i = 0; i < 8; i++) {
         if (diminishedCooldown > 0) diminishedCooldown--;
 
-        if (skipTurns.includes(i)) continue;
+        if (skipTurns.includes(i)) {
+            previousChordDegree = i > 0 
+            && progression[i-1] !== undefined 
+            ? progression[i-1][progression[i-1].length-1].degree : 0;
+            continue;
+        }
 
         const measure = [];
         let chordDegree = randNum(2, 7);
-        let chord = getChordByDegree(chordDegree);
+        let chord = getChordByDegree(chordDegree, chords);
         let isEven = (i + 1) % 2 === 0;
 
         // Ellenőrizzük a diminished tiltást
@@ -162,9 +184,11 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
             generálni, csak második akkordnak az ütemben!
         */
         while (chord.type === "diminished" 
-            || chord === previousChordDegree) {
+            || chord === previousChordDegree
+            || selectedScale === "melodic minor"
+            && previousChordDegree === 2 && chordDegree === 4) {
             chordDegree = randNum(2, 7);
-            chord = getChordByDegree(chordDegree);
+            chord = getChordByDegree(chordDegree, chords);
         }
 
         previousChordDegree = chordDegree;
@@ -173,19 +197,18 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
 
         // Pattern-specifikus második akkord (ha van)
         if (!isEven && patternChoice === 1) {
-            chord = pickaChord(previousChordDegree);
+            chord = pickaChord(previousChordDegree, chords);
             measure.push(chord);
-            if (chord.type === "diminished") diminishedCooldown = 3;
         } else if (patternChoice === 2 && isEven) {
-            chord = pickaChord(previousChordDegree);
+            chord = pickaChord(previousChordDegree, chords);
             measure.push(chord);
-            if (chord.type === "diminished") diminishedCooldown = 3;
         }
+
+        if (chord.type === "diminished") diminishedCooldown = 3;
 
         progression[i] = measure;
         previousChordDegree = chordDegree;
     }
-
 
     return { scale: selectedScale, progression };
 }
@@ -299,47 +322,86 @@ function getScaleNotes(key, scaleType) {
     return modeNotes;
 }
 
-function getDiatonicChords(key, scaleType, chordType) {
-    // Mindig natural minor skálát használunk minor esetén
+function getDiatonicChords(key, scaleType, chordType, isOpenPos = true) {
+    const baseOctave = isOpenPos ? 3 : 4;
+
     let minorType = scaleType;
     if (scaleType === "harmonic minor" || scaleType === "melodic minor") {
         minorType = "natural minor";
     }
 
-    const scaleNotes = getScaleNotes(key, minorType);
+    const scaleNotes = getScaleNotes(key, minorType); // pl. ["C","D","E","F","G","A","B"]
     const chords = [];
+    const scaleLen = scaleNotes.length; // 7
     let chordLength = 3;
-
     if (chordType === "seventh") chordLength = 4;
     else if (chordType === "ninth") chordLength = 5;
 
-    for (let i = 0; i < scaleNotes.length; i++) {
+    for (let i = 0; i < scaleLen; i++) {
         const chord = [];
+
         for (let j = 0; j < chordLength; j++) {
-            const noteIndex = (i + j * 2) % scaleNotes.length;
-            chord.push(scaleNotes[noteIndex]);
+            const step = j * 2; // 0,2,4,6,...
+            const absoluteIndex = i + step;
+            const noteIndex = absoluteIndex % scaleLen;
+            const noteName = scaleNotes[noteIndex];
+
+            // alap oktáv: baseOctave + amennyi teljes skálaciklust átléptünk
+            let octave = baseOctave;
+
+            // open-voicing döntés — DEGREE-ELŐSZÖR (nem else-if lánc, ami "ráugrik" a defaultra)
+            if (isOpenPos) {
+                if (chordLength === 3) {
+                    // TRIAD szabályok:
+
+                    if(i < 3 && j === 1) {
+                        octave += 1;
+                    } else if(i >= 3 && i < 5 && j === 0) {
+                        octave += 1;
+                    } else if(i >= 5 && i <= 6 && j === 2) {
+                        octave += 1;
+                    }
+                } else if (chordLength === 4) {
+                    if(i === 0 && (j === 1 || j === 3)) {
+                        octave += 1;
+                    } else if(i === 1 && (j === 1 && j === 2)) {
+                        octave += 1;
+                    } else if(i === 2 && (j === 0)) {
+                        octave += 1;
+                    } else if([3,4,5,6].includes(i) && (j === 0 || j == 2)) {
+                        octave += 1;
+                    }
+                }
+            }
+
+            chord.push(`${noteName}${octave}`);
         }
+
         chords.push(chord);
     }
 
-    // Minor speciális módosítások
+    // segéd: hangnév + oktáv kinyerése (robosztusabb, mint slice)
+    function splitNote(noteWithOct) {
+        const m = String(noteWithOct).match(/^([A-G][b#]?)(-?\d+)$/);
+        if (m) return { name: m[1], octave: parseInt(m[2], 10) };
+        return { name: String(noteWithOct).replace(/\d+$/, ''), octave: baseOctave };
+    }
+
+    // Minor-speciális: csak a hangnevet módosítjuk, az oktávot megtartjuk
     if (scaleType === "harmonic minor") {
-        // V. fok (index 4) major lesz
-        const chord = chords[4];
-        chord[1] = sharpen(chord[1]); // Third élesítése
+        const parsed = splitNote(chords[4][1]); // V. fok (index 4) third
+        chords[4][1] = `${sharpen(parsed.name)}${parsed.octave}`;
     }
 
     if (scaleType === "melodic minor") {
-        // IV. és V. fok (index 3 és 4) major lesz
         for (let idx of [3, 4]) {
-            const chord = chords[idx];
-            chord[1] = sharpen(chord[1]); // Third élesítése
+            const parsed = splitNote(chords[idx][1]);
+            chords[idx][1] = `${sharpen(parsed.name)}${parsed.octave}`;
         }
     }
 
     return chords;
 }
-
 
 function getSecondaryDominants(diatonicChords, scaleType = "major") {
     const result = [];

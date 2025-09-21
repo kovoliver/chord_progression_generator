@@ -71,7 +71,8 @@ export default async function generateMidiFromProgression(
             }
 
             // normalizáljuk a pitch-eket és ellenőrizzük
-            const midiPitches = chord.notes.map(n => normalizePitch(String(n)));
+            //const midiPitches = chord.notes.map(n => normalizePitch(String(n)));
+            const midiPitches = chord.notes.map(String);
 
             // számoljuk ki az abszolút tick-et: measureStart + measureBeatPointer * TICKS_PER_QUARTER
             const measureStartTick = measureIndex * ticksPerMeasure;
