@@ -51,6 +51,20 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
         return { index: degree, notes: diatonicChords[degree - 1], type: type };
     }
 
+    function pickaChord(prevDegree) {
+        let chordDegree = randNum(2, 7);
+        let chord = getChordByDegree(chordDegree);
+
+        while ((chord.type === "diminished"
+            && (diminishedCooldown > 0 || Math.abs(prevDegree - chordDegree) > 2))
+            || chordDegree === prevDegree) {
+            chordDegree = randNum(2, 7);
+            chord = getChordByDegree(chordDegree);
+        }
+
+        return chord;
+    }
+
     // 1. Skála kiválasztása valószínűség alapján
     const scaleProbabilities = {};
     const targetMood = { "sad-cheerful": sadCheerful, "mysterious-mundane": mysteriousMundane, "tense-calm": tenseCalm };
@@ -65,7 +79,6 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
     const sortedScales = Object.entries(scaleProbabilities)
         .sort(([, probA], [, probB]) => probB - probA)
         .slice(0, 3);
-
 
     // Véletlenszerű választás a top 3 skála közül
     const selectedScale = sortedScales[Math.floor(Math.random() * 3)][0];
@@ -131,10 +144,9 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
     }
 
     let previousChordDegree = 0;
-    let diminishedCooldown = 0; // nulla, azaz kezdéskor nincs tiltás
+    let diminishedCooldown = 0;
 
     for (let i = 0; i < 8; i++) {
-        // Minden ütemnél csökkentjük a diminishedCooldown-ot, akár skipelt, akár nem
         if (diminishedCooldown > 0) diminishedCooldown--;
 
         if (skipTurns.includes(i)) continue;
@@ -142,9 +154,15 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
         const measure = [];
         let chordDegree = randNum(2, 7);
         let chord = getChordByDegree(chordDegree);
+        let isEven = (i + 1) % 2 === 0;
 
         // Ellenőrizzük a diminished tiltást
-        while ((chord.type === "diminished" && diminishedCooldown > 0) || chordDegree === previousChordDegree) {
+        /*
+            Első, vagy egyetlen akkordnak ne tudjuk diminished-et
+            generálni, csak második akkordnak az ütemben!
+        */
+        while (chord.type === "diminished" 
+            || chord === previousChordDegree) {
             chordDegree = randNum(2, 7);
             chord = getChordByDegree(chordDegree);
         }
@@ -153,30 +171,13 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
 
         measure.push(chord);
 
-        // Ha diminished-et generáltunk, beállítjuk a cooldown-t
-        if (chord.type === "diminished") diminishedCooldown = 3;
-
         // Pattern-specifikus második akkord (ha van)
-        if ((i + 1) % 2 === 1 && patternChoice === 1) {
-            chordDegree = randNum(2, 7);
-            chord = getChordByDegree(chordDegree);
-
-            while ((chord.type === "diminished" && diminishedCooldown > 0) || chordDegree === previousChordDegree) {
-                chordDegree = randNum(2, 7);
-                chord = getChordByDegree(chordDegree);
-            }
-
+        if (!isEven && patternChoice === 1) {
+            chord = pickaChord(previousChordDegree);
             measure.push(chord);
             if (chord.type === "diminished") diminishedCooldown = 3;
-        } else if (patternChoice === 2 && (i + 1) % 2 === 0) {
-            chordDegree = randNum(2, 7);
-            chord = getChordByDegree(chordDegree);
-
-            while ((chord.type === "diminished" && diminishedCooldown > 0) || chordDegree === previousChordDegree) {
-                chordDegree = randNum(2, 7);
-                chord = getChordByDegree(chordDegree);
-            }
-
+        } else if (patternChoice === 2 && isEven) {
+            chord = pickaChord(previousChordDegree);
             measure.push(chord);
             if (chord.type === "diminished") diminishedCooldown = 3;
         }
@@ -184,6 +185,7 @@ function createChordProgression(sadCheerful, mysteriousMundane, tenseCalm, simpl
         progression[i] = measure;
         previousChordDegree = chordDegree;
     }
+
 
     return { scale: selectedScale, progression };
 }
@@ -519,7 +521,7 @@ function getChromaticMediants(diatonicChords, scaleType = "major", chordType = "
     return result;
 }
 
-const progression = createChordProgression(-5, 0, -3, 1);
+const progression = createChordProgression(3, 2, 3, 1);
 console.log(progression.scale);
 
 for (let chord of progression.progression) {
