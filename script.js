@@ -362,13 +362,11 @@ function getDiatonicChords(key, scaleType, chordType, isOpenPos = true) {
                         octave += 1;
                     }
                 } else if (chordLength === 4) {
-                    if(i === 0 && (j === 1 || j === 3)) {
+                    if([0,5,6].includes(i) && (j === 1 || j === 3)) {
                         octave += 1;
-                    } else if(i === 1 && (j === 1 && j === 2)) {
+                    } else if([1,2].includes(i) && (j === 2 || j === 3)) {
                         octave += 1;
-                    } else if(i === 2 && (j === 0)) {
-                        octave += 1;
-                    } else if([3,4,5,6].includes(i) && (j === 0 || j == 2)) {
+                    } else if([3,4].includes(i) && (j === 0 || j === 2)) {
                         octave += 1;
                     }
                 }
